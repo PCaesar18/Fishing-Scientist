@@ -1,0 +1,20 @@
+[
+    {
+      "Name": "aging_population_dynamics",
+      "Title": "Modeling the Impact of an Aging Population on Economic Productivity in Japan",
+      "Experiment": "Modify the EconomyEnv environment to introduce age-based skill distributions for agents. Younger agents will have higher crafting and gathering skills, while older agents will specialize in trading and policy-making. Simulate the effects of an aging population on productivity, income inequality, and government tax policies. Analyze how government interventions like immigration policies or tax incentives impact economic outcomes over time.",
+      "Interestingness": 9,
+      "Feasibility": 8,
+      "Novelty": 9,
+      "novel": true
+    },
+    {
+      "Name": "universal_basic_income",
+      "Title": "Evaluating the Impact of Universal Basic Income in Japan using EconoJax",
+      "Experiment": "Enable the government agent in the EconomyEnv environment to implement a Universal Basic Income (UBI) policy, providing all agents with a baseline income. Adjust tax policies to fund the UBI and analyze the effects on wealth distribution, agent productivity, and overall economic equality. Explore different UBI levels and tax structures to identify optimal policies for reducing inequality without harming productivity.",
+      "Interestingness": 9,
+      "Feasibility": 9,
+      "Novelty": 8,
+      "novel": true
+    }
+]

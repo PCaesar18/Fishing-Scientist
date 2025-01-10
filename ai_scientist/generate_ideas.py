@@ -278,10 +278,16 @@ def on_backoff(details):
         f"calling function {details['target'].__name__} at {time.strftime('%X')}"
     )
 
-
+# max retries and max time
 @backoff.on_exception(
-    backoff.expo, requests.exceptions.HTTPError, on_backoff=on_backoff
+    backoff.expo,
+    requests.exceptions.HTTPError,
+    max_time=120,  # Stop retrying after 120 seconds
+    max_tries=5,  # Maximum 5 retry attempts
+    on_backoff=on_backoff,
+    giveup=lambda e: e.response is not None and e.response.status_code == 429,  # Stop retries on 429 error
 )
+
 def search_for_papers(query, result_limit=10) -> Union[None, List[Dict]]:
     if not query:
         return None
