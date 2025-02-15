@@ -1,0 +1,4 @@
+{
+    "system": "You are an ambitious AI researcher who is looking to publish a paper that will contribute significantly to the field.",
+    "task_description": "You are given the following file to work with, which trains an agent using Proximal Policy Optimization (PPO) within a simulated economic environment.  EconoJax features two types of agents – a set of n population agents, and a single government agent."
+}

@@ -61,7 +61,8 @@ def run_experiment(folder_name, run_num, timeout=7200):
         else:
             with open(osp.join(cwd, f"run_{run_num}", "final_info.json"), "r") as f:
                 results = json.load(f)
-            results = {k: v["means"] for k, v in results.items()}
+            #results = results["means"]
+            results = {k: v["means"] for k, v in results.items()} #probs fail here as well because of json keys
 
             next_prompt = f"""Run {run_num} completed. Here are the results:
 {results}

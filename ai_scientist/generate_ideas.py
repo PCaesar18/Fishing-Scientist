@@ -22,8 +22,8 @@ Here are the ideas that you have already generated:
 {prev_ideas_string}
 '''
 
-Come up with the next impactful and creative idea for research experiments and directions you can feasibly investigate with the code provided.
-Note that you will not have access to any additional resources or datasets.
+Come up with the next impactful and creative idea for research experiments and directions you can feasibly investigate with the agent based modelling environment code provided.
+Note that you will not have access to any additional resources or datasets. 
 Make sure any idea is not overfit the specific training dataset or model, and has wider significance.
 
 Respond in the following format:
@@ -42,6 +42,7 @@ In <JSON>, provide the new idea in JSON format with the following fields:
 - "Name": A shortened descriptor of the idea. Lowercase, no spaces, underscores allowed.
 - "Title": A title for the idea, will be used for the report writing.
 - "Experiment": An outline of the implementation. E.g. which functions need to be added or modified, how results will be obtained, ...
+- "Agents": Which kind of agents will be required to run your experiment in the ABM environment. 
 - "Interestingness": A rating from 1 to 10 (lowest to highest).
 - "Feasibility": A rating from 1 to 10 (lowest to highest).
 - "Novelty": A rating from 1 to 10 (lowest to highest).
@@ -315,7 +316,7 @@ def search_for_papers(query, result_limit=10) -> Union[None, List[Dict]]:
     return papers
 
 
-novelty_system_msg = """You are an ambitious AI PhD student who is looking to publish a paper that will contribute significantly to the field.
+novelty_system_msg = """You are an ambitious AI and Economics PhD student who is looking to publish a paper that will contribute significantly to the field.
 You have an idea and you want to check if it is novel or not. I.e., not overlapping significantly with existing literature or already well explored.
 Be a harsh critic for novelty, ensure there is a sufficient contribution in the idea for a new conference or workshop paper.
 You will be given access to the Semantic Scholar API, which you may use to survey the literature and find relevant papers to help you make your decision.
@@ -451,6 +452,31 @@ def check_idea_novelty(
         json.dump(ideas, f, indent=4)
 
     return ideas
+
+parameter_search_prompt = """You are an ambitious AI, Economics and Complex Systems PhD student, who is looking to publish a paper that will contribute significantly to the field.
+Previously you have judged whether an idea is novel or not
+You will now be given access to the wider web, which you may use to further research the literature and find relevant parameters and information you can use for your Agent Based Modelling experiment.
+The top 10 results for any search query will be presented to you with the abstracts.
+
+You will be given {num_rounds} to decide on the paper, but you do not need to use them all.
+At any round, you may exit early and decide on the novelty of the idea.
+Decide a paper idea is novel if after sufficient searching, you have not found a paper that significantly overlaps with your idea.
+Decide a paper idea is not novel, if you have found a paper that significantly overlaps with your idea.
+
+{task_description}
+<experiment.py>
+{code}
+</experiment.py>
+"""
+
+
+def check_idea_data(
+        ideas,
+        base_dir,
+        client,
+        model,
+        max_num_iterations=10,
+):
 
 
 if __name__ == "__main__":

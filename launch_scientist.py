@@ -141,9 +141,19 @@ def do_idea(
     assert not osp.exists(folder_name), f"Folder {folder_name} already exists."
     destination_dir = folder_name
     shutil.copytree(base_dir, destination_dir, dirs_exist_ok=True)
+    
     with open(osp.join(base_dir, "run_0", "final_info.json"), "r") as f:
         baseline_results = json.load(f)
-    baseline_results = {k: v["means"] for k, v in baseline_results.items()}
+    try:
+        #baseline_results = baseline_results["means"]
+        baseline_results = {k: v["means"] for k, v in baseline_results.items()} ## error here, got to fix the final_info.json file to be able to fit the experiment
+    except Exception as e:
+        print(f"Error during getting the baseline results: {e}") 
+        print(f"not correct dict in baseline_results", baseline_results.items())
+        return False
+    #print("DEBUG: we possible fail to get the baseline results correctly") 
+    
+    
     exp_file = osp.join(folder_name, "experiment.py")
     vis_file = osp.join(folder_name, "plot.py")
     notes = osp.join(folder_name, "notes.txt")
@@ -168,13 +178,13 @@ def do_idea(
         io = InputOutput(
             yes=True, chat_history_file=f"{folder_name}/{idea_name}_aider.txt"
         )
-        if model == "deepseek-coder-v2-0724":
-            main_model = Model("deepseek/deepseek-coder")
+        if model == "deepseek":
+            main_model = Model("deepseek/deepseek-reasoner")
         elif model == "llama3.1-405b":
             main_model = Model("openrouter/meta-llama/llama-3.1-405b-instruct")
         else:
             main_model = Model(model)
-        coder = Coder.create(
+        coder = Coder.create( #check here if we can use more files 
             main_model=main_model,
             fnames=fnames,
             io=io,
@@ -202,8 +212,8 @@ def do_idea(
         if writeup == "latex":
             writeup_file = osp.join(folder_name, "latex", "template.tex")
             fnames = [exp_file, writeup_file, notes]
-            if model == "deepseek-coder-v2-0724":
-                main_model = Model("deepseek/deepseek-coder")
+            if model == "deepseek":
+                main_model = Model("deepseek/deepseek-reasoner")
             elif model == "llama3.1-405b":
                 main_model = Model("openrouter/meta-llama/llama-3.1-405b-instruct")
             else:
@@ -360,6 +370,7 @@ if __name__ == "__main__":
         print("All parallel processes completed.")
     else:
         for idea in novel_ideas:
+            print("Type of idea:", type(idea))
             print(f"Processing idea: {idea['Name']}")
             try:
                 success = do_idea(
