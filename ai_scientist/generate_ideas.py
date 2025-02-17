@@ -22,7 +22,7 @@ Here are the ideas that you have already generated:
 {prev_ideas_string}
 '''
 
-Come up with the next impactful and creative idea for research experiments and directions you can feasibly investigate with the agent based modelling environment code provided.
+Come up with the next impactful and creative idea for research experiments and directions you can feasibly investigate within the agent based modelling environment code provided.
 Note that you will not have access to any additional resources or datasets. 
 Make sure any idea is not overfit the specific training dataset or model, and has wider significance.
 
@@ -452,31 +452,6 @@ def check_idea_novelty(
         json.dump(ideas, f, indent=4)
 
     return ideas
-
-parameter_search_prompt = """You are an ambitious AI, Economics and Complex Systems PhD student, who is looking to publish a paper that will contribute significantly to the field.
-Previously you have judged whether an idea is novel or not
-You will now be given access to the wider web, which you may use to further research the literature and find relevant parameters and information you can use for your Agent Based Modelling experiment.
-The top 10 results for any search query will be presented to you with the abstracts.
-
-You will be given {num_rounds} to decide on the paper, but you do not need to use them all.
-At any round, you may exit early and decide on the novelty of the idea.
-Decide a paper idea is novel if after sufficient searching, you have not found a paper that significantly overlaps with your idea.
-Decide a paper idea is not novel, if you have found a paper that significantly overlaps with your idea.
-
-{task_description}
-<experiment.py>
-{code}
-</experiment.py>
-"""
-
-
-def check_idea_data(
-        ideas,
-        base_dir,
-        client,
-        model,
-        max_num_iterations=10,
-):
 
 
 if __name__ == "__main__":
