@@ -23,6 +23,7 @@ from scripts.text_web_browser import (
 )
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+SERPAPI_API_KEY = os.getenv("SERPAPI_API_KEY")
 
 AUTHORIZED_IMPORTS = [
     "requests",
@@ -61,7 +62,7 @@ BROWSER_CONFIG = {
         "headers": {"User-Agent": user_agent},
         "timeout": 300,
     },
-    "serpapi_key": os.getenv("SERPAPI_API_KEY"),
+    "serpapi_key": SERPAPI_API_KEY,
 }
 
 os.makedirs(f"./{BROWSER_CONFIG['downloads_folder']}", exist_ok=True)
@@ -104,7 +105,8 @@ def deep_research_data(
         base_dir,
         model_id,
         max_num_thinking_steps=20,
-):
+):    
+    research_answer = []
     with open(osp.join(base_dir, "ideas.json"), "r") as f:
         ideas = json.load(f)
         #agents = ideas["agents"]
@@ -138,7 +140,7 @@ def deep_research_data(
         
             #have this work with the llm.py file. Could change it to use local llms from llm.py
             model = LiteLLMModel(
-                model=model_id,
+                model_id = "o1", #change this to be set but now throws up an exception
                 custom_role_conversions={"tool-call": "assistant", 
                                          "tool-response": "user"},
                 max_completion_tokens=8192,
@@ -190,7 +192,11 @@ def deep_research_data(
                 managed_agents=[text_webbrowser_agent], #so far only managing one agent, can give more 
             )
 
-            research_answer = manager_agent.run(prompt) #change this to prompt question 
+            answer = manager_agent.run(prompt) #change this to prompt question 
+            research_answer.append({
+            "idea": idea["Name"],
+            "agent_parameters": answer
+            })  
             
         except Exception as e:
             print(f"Error: {e}")
@@ -198,7 +204,7 @@ def deep_research_data(
 
     # Save results to JSON file
     research_results_file = osp.join(base_dir, "parameters.json")
-    research_answer = {}
+
     with open(research_results_file, "w") as f:
         json.dump(research_answer, f, indent=4)
 
@@ -216,7 +222,7 @@ if __name__ == "__main__":
     answer = deep_research_data(
         base_dir=base_dir,
         #client="gpt3",
-        model_id="o3-mini",
+        model_id="o1",
         max_num_thinking_steps=20
     )
  

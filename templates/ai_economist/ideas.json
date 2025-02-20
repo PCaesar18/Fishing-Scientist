@@ -9,24 +9,6 @@
         "novel": true
     },
     {
-        "Name": "aging_population_dynamics",
-        "Title": "Modeling the Impact of an Aging Population on Economic Productivity in Japan",
-        "Experiment": "Modify the simulation environment to introduce age-based skill distributions for agents. Younger agents will have higher crafting and gathering skills, while older agents will specialize in trading and policy-making. Simulate the effects of an aging population on productivity, income inequality, and government tax policies. Analyze how government interventions like immigration policies or tax incentives impact economic outcomes over time.",
-        "Interestingness": 9,
-        "Feasibility": 8,
-        "Novelty": 9,
-        "novel": true
-    },
-    {
-        "Name": "carbon_tax_policy",
-        "Title": "Assessing the Economic Impact of Carbon Tax Policy in EconoJax",
-        "Experiment": "Introduce a carbon tax managed by the government agent. This tax affects resource gathering and crafting activities based on their carbon emissions. Modify the environment to account for emissions associated with different resources and activities. Evaluate the effects on economic productivity, resource allocation, and wealth distribution across agents. The government sets tax rates for emissions, and the policy's impact on agent behavior and economic indicators is analyzed.",
-        "Interestingness": 8,
-        "Feasibility": 7,
-        "Novelty": 9,
-        "novel": true
-    },
-    {
         "Name": "technological_revolution",
         "Title": "Simulating the Impact of Technological Revolution on Economic Stability and Inequality in EconoJax",
         "Experiment": "Modify the simulation environment to introduce a 'technological revolution' that randomly enhances the productivity of a subset of agents. This can be done by temporarily boosting their crafting and gathering skills. Evaluate the impact on economic productivity, income inequality, and the effectiveness of government policies (like taxation) in mitigating any negative effects. Analyze how such technological changes can lead to greater inequality if not managed correctly, and the role of government in ensuring equitable distribution of technological benefits.",
