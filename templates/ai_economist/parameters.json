@@ -1,1 +1,54 @@
-{}
+[
+    {
+        "idea": "universal_basic_income",
+        "agent_parameters": [
+            {
+                "Agent_type": "Government",
+                "The relevant parameters.": "Baseline UBI level, progressive or flat income tax rates (~5\u201345%), consumption tax (10%), debt-to-GDP ratio (>200%), government spending (~39% of GDP), near-zero interest rates (if monetary policy is included).",
+                "What the agent does": "Implements and finances UBI policy, collects taxes, manages public debt, and influences macroeconomic conditions via spending/borrowing.",
+                "And the source of your identified parameters.": "Ministry of Finance (budget, tax data), Bank of Japan (interest rates, debt info), Statistics Bureau of Japan (public finance statistics)."
+            },
+            {
+                "Agent_type": "Household",
+                "The relevant parameters.": "Consumption-savings elasticity (0.8\u20130.9), labor supply elasticity (0.1\u20130.2), saving rate (5\u201320% of disposable income), age- and income-based heterogeneity.",
+                "What the agent does": "Receives UBI, earns wages, consumes goods/services, decides on labor supply, and can save or invest remaining income.",
+                "And the source of your identified parameters.": "Statistics Bureau of Japan (household surveys), MDPI (2023), Federal Reserve Bank of Cleveland (2021)."
+            },
+            {
+                "Agent_type": "Firm",
+                "The relevant parameters.": "Cobb\u2013Douglas production function with labor share of ~0.6\u20130.7, wage-setting rules (market-based or seniority-based), corporate tax (~30%), investment strategies influenced by near-zero interest rates.",
+                "What the agent does": "Hires labor, sets wages, produces goods/services, invests in capital, and pays taxes.",
+                "And the source of your identified parameters.": "Japan Tax Agency (corporate tax data), Bank of Japan (investment data), modern ABM references adjusted for JAX."
+            }
+        ]
+    },
+    {
+        "idea": "technological_revolution",
+        "agent_parameters": [
+            {
+                "Agent_type": "Gatherer",
+                "The relevant parameters.": "Gathering skill, resource endowment or starting capital, resource usage rate, productivity factors, consumption needs.",
+                "What the agent does": "Collects raw resources from the environment; higher gathering skill means higher efficiency in harvesting resources. Often trades or sells resources to other agents.",
+                "And the source of your identified parameters.": "References: JASSS 2013 & 2020 papers, NIH 2002 review, and 'An Agent-Based Modelling Framework Based on JAX' (arXiv:2409.06345). Typical skill values range from 0\u20131 or 1\u201310."
+            },
+            {
+                "Agent_type": "Crafter",
+                "The relevant parameters.": "Crafting (production) skill, resource endowment (inputs), labor/time constraints, productivity factor mapping inputs to outputs, cost function.",
+                "What the agent does": "Creates goods from raw resources. Productivity depends on skill level and available inputs; output sold to traders or directly to consumers.",
+                "And the source of your identified parameters.": "Based on JASSS and Foragax references. Crafting skill typically modeled between 1\u201310, with resource-plenty or scarcity affecting output rates."
+            },
+            {
+                "Agent_type": "Trader",
+                "The relevant parameters.": "Negotiation skill, initial capital endowment, transaction cost rate, risk tolerance, desired profit margin, possibly transport costs.",
+                "What the agent does": "Facilitates exchange between gatherers, crafters, and consumers. Buys resources or goods at one price, sells at another, and profits from price differences.",
+                "And the source of your identified parameters.": "Derived from ABM trade models in JASSS (2013) focusing on skill-based trading. Negotiation skill can be 0\u20131 or 1\u201310, affecting price setting and success rate."
+            },
+            {
+                "Agent_type": "Government/Regulatory",
+                "The relevant parameters.": "Tax rates, subsidies, policy levers, enforcement power, redistribution mechanisms, budget constraints.",
+                "What the agent does": "Sets market rules (taxation, subsidies) and provides social programs. Aims to balance efficiency and equity, shaping inequality outcomes.",
+                "And the source of your identified parameters.": "Common in ABM policy simulations (NIH 2002, JASSS papers, and Foragax). Tax or subsidy rates typically range 0\u2013100%, or 0\u20131 in fractional terms."
+            }
+        ]
+    }
+]

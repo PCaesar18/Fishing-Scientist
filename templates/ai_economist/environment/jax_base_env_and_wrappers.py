@@ -22,10 +22,10 @@ class TimeStep(NamedTuple):
 
 class JaxBaseEnv(eqx.Module):
     """
-    Base class for a JAX environment.
+    Base class for aa JAX environment.
     This class inherits from eqx.Module, meaning it is a PyTree node and a dataclass.
     set params by setting the properties of the class.
-    Much of the modules are inspired by the Gymnax base class.
+    Much of the modules are inspired by the Gymnax base clss.
     """
 
     # example_property: int = 0

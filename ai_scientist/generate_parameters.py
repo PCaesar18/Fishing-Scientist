@@ -21,7 +21,7 @@ from scripts.text_web_browser import (
     SimpleTextBrowser,
     VisitTool,
 )
-
+# this code is adopted from the Huggingface deep research tool project 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 SERPAPI_API_KEY = os.getenv("SERPAPI_API_KEY")
 
@@ -94,8 +94,11 @@ In <THOUGHT>, first briefly reason over the idea and identify the agents that co
 Then, use the web to search for the relevant parameters for the agents you have identified. 
 Ensure that your answers are correct and relevant to the idea and the agents you have identified. Also ensure that the parameters are relevant to the ABM environment (the environment is written in JAX). 
 
-In <JSON>, respond in JSON format with ONLY the following field:
-- "Agent_type": "The relevant parameters.", "What the agent does", "And the source of your identified parameters. "
+In <JSON>, respond in JSON format with ONLY the following fields:
+- "Agent_type": 
+- "Parameters" :
+- "Agent_description":
+- "Parameter_source":
 
 This JSON will be automatically parsed, so ensure the format is precise.
 '''
