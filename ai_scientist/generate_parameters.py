@@ -1,3 +1,4 @@
+# code adapted from https://github.com/huggingface/smolagents/tree/main/examples/open_deep_research
 import json
 import os
 import os.path as osp

@@ -1,6 +1,8 @@
 import jax.numpy as jnp
 import jax
 import numpy as np
+import random
+import string
 
 def argmax_2d_array(a, dtype=None):
     """ 
@@ -76,3 +78,8 @@ def get_pareto_skill_dists(seed, num_agents, num_resources):
     craft_skills = max_bonus_craft * ratios[:, 0]
     gather_skills = max_bonus_gather * ratios[:, 1:]
     return craft_skills, gather_skills
+
+def random_id(length=4):
+    characters = string.ascii_letters + string.digits  # includes both upper/lower case letters and numbers
+    random_id = ''.join(random.choices(characters, k=length))
+    return random_id

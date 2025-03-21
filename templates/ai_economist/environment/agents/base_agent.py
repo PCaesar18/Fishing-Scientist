@@ -3,10 +3,11 @@ import jax.numpy as jnp
 import equinox as eqx
 from gymnax.environments import spaces
 from environment.economy import EconomyEnv, EnvState
-
+# from util import random_id
 # Base agent class: defines the API that all agents must implement.
 class BaseAgent(eqx.Module):
-    name: str  # e.g., "population" or "government"
+    agent_name: str  # e.g., "population" or "government"
+    # id = random_id()
 
     def observation_space(self, env: EconomyEnv) -> spaces.Space:
         """Return the observation space for the agent given the environment."""
