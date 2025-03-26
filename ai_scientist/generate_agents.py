@@ -311,9 +311,7 @@ THINK OUTSIDE THE BOX.
 
 
 
-
-
-iteration_prompt = f""""[EXAMPLE]Carefully review the proposed new agent architecture and reflect on the following points:"
+iteration_prompt_1 = f""""[EXAMPLE]Carefully review the proposed new agent architecture and reflect on the following points:"
 
 1. **Interestingness**: Assess whether your proposed architecture is interesting or innovative compared to existing methods in the archive. If you determine that the proposed architecture is not interesting, suggest a new architecture that addresses these shortcomings. 
 - Make sure to check the difference between the proposed architecture and previous attempts.
@@ -341,7 +339,7 @@ Your response should be organized as follows:
 "code": Provide the corrected code or an improved implementation. Make sure you actually implement your fix and improvement in this code.
 """
 
-
+system_prompt = """You are a helpful assistant. Make sure to return in a WELL-FORMED JSON object."""
 
 
 # @backoff.on_exception(backoff.expo, openai.RateLimitError)
@@ -384,6 +382,27 @@ Your response should be organized as follows:
 
 
 #fix this to create full prompts for input fields
+
+
+def get_prompt(current_archive, adaptive=False):
+    archive_str = ",\n".join([json.dumps(sol) for sol in current_archive])
+    archive_str = f"[{archive_str}]"
+    prompt = base.replace("[ARCHIVE]", archive_str)
+    prompt = prompt.replace("[EXAMPLE]", json.dumps(EXAMPLE))
+
+    return system_prompt, prompt
+
+
+def get_init_archive():
+    return [COT_code, Reflexion, LLM_debate, COT_SC, QD]
+
+
+def get_reflexion_prompt(prev_example):
+    prev_example_str = "Here is the previous agent you tried:\n" + json.dumps(prev_example) + "\n\n"
+    r1 = Reflexion_prompt_1.replace("[EXAMPLE]", prev_example_str) if prev_example else Reflexion_prompt_1.replace("[EXAMPLE]", "")
+    return r1, Reflexion_prompt_2
+
+
 def generate_prompt(self, input_infos, instruction) -> str:
     code_output = False
 
@@ -427,7 +446,7 @@ def query(self, input_infos: list, instruction, iteration_idx=-1) -> dict:
     system_prompt, prompt = self.generate_prompt(input_infos, instruction)
     try:
         response_json = {}
-        response_json = get_json_response_from_gpt(prompt, self.model, system_prompt, self.temperature)
+        response_json = get_json_response_from_gpt(prompt, self.model, system_prompt, self.temperature) #here we get the response from our LLM 
         assert len(response_json) == len(self.output_fields), "not returning enough fields"
     except Exception as e:
         # print(e)
@@ -446,11 +465,11 @@ def query(self, input_infos: list, instruction, iteration_idx=-1) -> dict:
         output_infos.append(info)
     return output_infos
 
-    def __repr__(self):
-        return f"{self.agent_name} {self.id}"
+def __repr__(self):
+    return f"{self.agent_name} {self.id}"
 
-    def __call__(self, input_infos: list, instruction, iteration_idx=-1):
-        return self.query(input_infos, instruction, iteration_idx=iteration_idx)
+def __call__(self, input_infos: list, instruction, iteration_idx=-1):
+    return self.query(input_infos, instruction, iteration_idx=iteration_idx)
 
 
 class AgentSystem():
