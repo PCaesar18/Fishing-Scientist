@@ -22,7 +22,8 @@ import openai
 from tqdm import tqdm
 from templates.ai_economist.environment.agents.base_agent import BaseAgent
 
-from utils import random_id,list_to_string, get_prompt, get_init_archive, get_reflexion_prompt
+from utils import random_id,list_to_string, get_prompt, get_init_archive
+
 
 
 
@@ -39,17 +40,16 @@ You are an expert machine learning researcher testing out various reinforcement 
 Your objective is to design Economic RL agents in JAX, with specific building blocks such as control flows and specific hyperparemeters within these systems to solve complex tasks. 
 Your aim is to design an optimal agent performing well in the economic environment that it is operating in. Feedback will be provided based on the performance of the agent in the environment.
 
-
 ## Type of RL agent you have to create and will be used in the future 
-{agent_type}
+{AGENT_TYPE}
 
 ## Agent Hyperparameters 
 
-{hyperparameters}
+{HYPERPARAMETERS}
 
 ## The base Agent Class which you have to inherit from and adapt :
 
-{base_agent_code}
+{BASE_AGENT_CLASS}
 
 # The environment code:
 
@@ -227,10 +227,10 @@ class AgentArchitecture:
         \"""
         pass
 ```
-# Discovered architecture archive
-Here is the archive of the discovered architectures:
+# Previousyly discovered agent architecture archive
+Here is the archive of the discovered agent architectures that worked well in the environment. You can use these as inspiration for your new agent design or use them in your new design:
 
-[ARCHIVE]
+{ARCHIVE}
 
 The fitness value is the median and 95% Bootstrap Confidence Interval of the correct rate on a validation question set. Your GOAL is to maximize the "fitness".
 
@@ -241,7 +241,7 @@ Finally, the last key ("code") corresponds to the exact .“forward()” functio
 
 Here is an example of the output format for the next agent architecture:
 
-[EXAMPLE]
+{EXAMPLE}
 
 You must use the exact function interface used above. You need to specify the instruction, input information, and the required output fields for various LLM agents to do their specific part of the architecture. 
 Also, it could be helpful to set the LLM’s role and temperature to further control the LLM’s response. Note that the LLMAgentBase() will automatically parse the output and return a list of “Infos”. You can get the content by Infos.content. 
@@ -301,14 +301,12 @@ return answer
 ```
 
 # Your task
-You are deeply familiar with prompting techniques and the agent works from the literature. Your goal is to maximize the specified performance metrics by proposing interestingly new agents.
+You are deeply familiar with reinforcement techniques and the agent works from the literature. Your goal is to maximize the specified performance metrics by proposing interestingly new RL agents.
 Observe the discovered agents carefully and think about what insights, lessons, or stepping stones can be learned from them.
 Be creative when thinking about the next interesting agent to try. You are encouraged to draw inspiration from related agent papers or academic papers from other research areas.
-Use the knowledge from the archive and inspiration from academic literature to propose the next interesting agentic system design.
+Use the knowledge from the archive and inspiration from the hyperparameters and academic literature to propose the next interesting RL agentic system.
 THINK OUTSIDE THE BOX.
 """
-
-
 
 
 iteration_prompt_1 = f""""[EXAMPLE]Carefully review the proposed new agent architecture and reflect on the following points:"
@@ -384,23 +382,62 @@ system_prompt = """You are a helpful assistant. Make sure to return in a WELL-FO
 #fix this to create full prompts for input fields
 
 
-def get_prompt(current_archive, adaptive=False):
+def get_prompt(idea, current_archive, base_agent, parameters):
+    """
+    Constructs and returns a system prompt and a user prompt for generating new agent architectures.
+
+    This function takes in details about the agent type, current archive of solutions, base agent class, 
+    and hyperparameters, and fills in a template prompt with these details. The prompt is used to guide 
+    the generation of new agent architectures in a reinforcement learning environment.
+
+    Args:
+        idea (str): The type of RL agent to be created and used in the future.
+        current_archive (list): A list of current solutions or agents, each represented as a dictionary.
+        base_agent (str): The base agent class which the new agent should inherit from and adapt.
+        parameters (dict): A dictionary of hyperparameters for the agent.
+
+    Returns:
+        tuple: A tuple containing the system prompt and the filled user prompt.
+    """
+    
     archive_str = ",\n".join([json.dumps(sol) for sol in current_archive])
     archive_str = f"[{archive_str}]"
-    prompt = base.replace("[ARCHIVE]", archive_str)
-    prompt = prompt.replace("[EXAMPLE]", json.dumps(EXAMPLE))
 
+    
+    prompt = base_prompt.replace("{ARCHIVE}", archive_str)
+    prompt = prompt.replace("{AGENT_TYPE}", idea)
+    prompt = prompt.replace("{HYPERPARAMETERS}", json.dumps(parameters))
+    prompt = prompt.replace("{BASE_AGENT_CLASS}", base_agent)
+    prompt = prompt.replace("{EXAMPLE}", json.dumps(EXAMPLE)) #previous example of created agent 
+
+    # Return the system prompt and the filled prompt
     return system_prompt, prompt
 
 
 def get_init_archive():
-    return [COT_code, Reflexion, LLM_debate, COT_SC, QD]
+    return [government_agent, population_agent]
 
 
-def get_reflexion_prompt(prev_example):
+def get_iteration_prompt(prev_example):
+    """
+    Constructs and returns a pair of reflection prompts for evaluating and iterating on agent designs.
+
+    This function takes a previous example of an agent and integrates it into a reflection prompt template.
+    The purpose of these prompts is to guide the user or system in reflecting on the previous agent's design,
+    identifying areas for improvement, and proposing new iterations or enhancements.
+
+    Args:
+        prev_example (dict): A dictionary representing the previous agent example, which includes details
+                             about the agent's design and performance.
+
+    Returns:
+        tuple: A tuple containing two strings:
+            - The first string is the reflection prompt with the previous example integrated.
+            - The second string is a static reflection prompt template for further guidance.
+    """
     prev_example_str = "Here is the previous agent you tried:\n" + json.dumps(prev_example) + "\n\n"
-    r1 = Reflexion_prompt_1.replace("[EXAMPLE]", prev_example_str) if prev_example else Reflexion_prompt_1.replace("[EXAMPLE]", "")
-    return r1, Reflexion_prompt_2
+    r1 = iteration_prompt_1.replace("[EXAMPLE]", prev_example_str) if prev_example else iteration_prompt_1.replace("[EXAMPLE]", "")
+    return r1, Reflexion_prompt_2 #TODO: iteration prompt 2 does not exist yet (is it necessary?)
 
 
 def generate_prompt(self, input_infos, instruction) -> str:
@@ -553,7 +590,7 @@ class AgentSystem():
         return gen_output(transform_output)
 
 
-def search(args):
+def gen_agents(args):
     file_path = os.path.join(args.save_dir, f"{args.expr_name}_run_archive.json")
     if os.path.exists(file_path):
         with open(file_path, 'r') as json_file:
@@ -597,7 +634,7 @@ def search(args):
         try:
             next_solution = get_json_response_from_gpt_reflect(msg_list, args.model)
 
-            Reflexion_prompt_1, Reflexion_prompt_2 = get_reflexion_prompt(archive[-1] if n > 0 else None)
+            Reflexion_prompt_1, Reflexion_prompt_2 = get_iteration_prompt(archive[-1] if n > 0 else None)
             # Reflexion 1
             msg_list.append({"role": "assistant", "content": str(next_solution)})
             msg_list.append({"role": "user", "content": Reflexion_prompt_1})
@@ -649,7 +686,7 @@ def search(args):
             json.dump(archive, json_file, indent=4)
 
 
-def evaluate(args):
+def eval_agents(args):
     file_path = os.path.join(args.save_dir, f"{args.expr_name}_run_archive.json")
     eval_file_path = str(os.path.join(args.save_dir, f"{args.expr_name}_run_archive.json")).strip(".json") + "_evaluate.json"
     with open(file_path, 'r') as json_file:
@@ -758,8 +795,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
     # search
     SEARCHING_MODE = True
-    search(args)
+    gen_agents(args)
 
     # evaluate
     SEARCHING_MODE = False
-    evaluate(args)
+    eval_agents(args)

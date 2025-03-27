@@ -1,6 +1,6 @@
 <h1 align="center">
   <a href=>
-    <img src="docs/logo_2.png" width="215" /></a><br>
+    <img src="misc/front-image.webp" width="215" /></a><br>
   <b>The AI Scientist meets🤝 The AI Economist</b><br>
   
   <b>Open-Ended Economic Discovery</b><br>
