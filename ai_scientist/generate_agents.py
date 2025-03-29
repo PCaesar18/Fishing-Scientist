@@ -15,14 +15,15 @@ import os
 import pickle
 from collections import namedtuple
 from concurrent.futures import ThreadPoolExecutor
-
+import glob 
+import importlib.util
 import backoff
 import numpy as np
 import openai
 from tqdm import tqdm
 from templates.ai_economist.environment.agents.base_agent import BaseAgent
 
-from utils import random_id,list_to_string, get_prompt, get_init_archive
+from utils import random_id,list_to_string, get_prompt, get_init_archive, file_to_string
 
 
 
@@ -34,6 +35,7 @@ CODE_INST = "You will write code to solve this task by creating a function named
 PRINT_LLM_DEBUG = False
 SEARCHING_MODE = True
 
+Info = namedtuple('Info', ['name', 'author', 'content', 'iteration_idx'])
 
 base_prompt = """# Overview
 You are an expert machine learning researcher testing out various reinforcement learning Agents. 
@@ -415,7 +417,24 @@ def get_prompt(idea, current_archive, base_agent, parameters):
 
 
 def get_init_archive():
-    return [government_agent, population_agent]
+    """
+    Reads the contents of two Python files (government_agent.py and population_agent.py)
+    into strings and returns them in a list.
+    
+    Returns:
+    - list: A list containing two strings: the code from government_agent.py, 
+            followed by the code from population_agent.py.
+    """
+    base_dir = 'path/to/your/agents'  # update this to args from command line 
+    government_agent_path = os.path.join(base_dir, 'government_agent.py')
+    population_agent_path = os.path.join(base_dir, 'population_agent.py')
+    with open(government_agent_path, 'r', encoding='utf-8') as f:
+        government_agent_code = f.read()
+    
+    with open(population_agent_path, 'r', encoding='utf-8') as f:
+        population_agent_code = f.read()
+    
+    return [government_agent_code, population_agent_code]
 
 
 def get_iteration_prompt(prev_example):
@@ -439,45 +458,45 @@ def get_iteration_prompt(prev_example):
     r1 = iteration_prompt_1.replace("[EXAMPLE]", prev_example_str) if prev_example else iteration_prompt_1.replace("[EXAMPLE]", "")
     return r1, Reflexion_prompt_2 #TODO: iteration prompt 2 does not exist yet (is it necessary?)
 
+#don't think i need this one but will keep it in for
+# def generate_prompt(self, input_infos, instruction) -> str:
+#     code_output = False
 
-def generate_prompt(self, input_infos, instruction) -> str:
-    code_output = False
+#     # construct system prompt
+#     output_fields_and_description = {key: f"Your {key}." for key in self.output_fields}
+#     for key in output_fields_and_description:
+#         if 'answer' in key:
+#             output_fields_and_description[key] = f"Your {key}. ONLY return a string of list[list[int]]. DO NOT return anything else."
+#         elif 'code' in key:
+#             output_fields_and_description[key] = f"Your {key}. Don't write tests in your Python code, ONLY return the `transform` function. DO NOT return anything else. (It will be tested later.)"
+#             code_output = True
+#     system_prompt = ROLE_DESC(self.role) + FORMAT_INST(output_fields_and_description)
 
-    # construct system prompt
-    output_fields_and_description = {key: f"Your {key}." for key in self.output_fields}
-    for key in output_fields_and_description:
-        if 'answer' in key:
-            output_fields_and_description[key] = f"Your {key}. ONLY return a string of list[list[int]]. DO NOT return anything else."
-        elif 'code' in key:
-            output_fields_and_description[key] = f"Your {key}. Don't write tests in your Python code, ONLY return the `transform` function. DO NOT return anything else. (It will be tested later.)"
-            code_output = True
-    system_prompt = ROLE_DESC(self.role) + FORMAT_INST(output_fields_and_description)
+#     # construct input infos text
+#     input_infos_text = ''
+#     for input_info in input_infos:
+#         if isinstance(input_info, Info):
+#             (field_name, author, content, iteration_idx) = input_info
+#         else:
+#             continue
 
-    # construct input infos text
-    input_infos_text = ''
-    for input_info in input_infos:
-        if isinstance(input_info, Info):
-            (field_name, author, content, iteration_idx) = input_info
-        else:
-            continue
+#         if isinstance(content, list):
+#             try:
+#                 content = list_to_string(content)
+#             except:
+#                 pass
 
-        if isinstance(content, list):
-            try:
-                content = list_to_string(content)
-            except:
-                pass
+#         if author == self.__repr__():
+#             author += ' (yourself)'
+#         if field_name == 'task':
+#             input_infos_text += f'# Your Task:\n{content}\n\n'
+#         elif iteration_idx != -1:
+#             input_infos_text += f'### {field_name} #{iteration_idx + 1} by {author}:\n{content}\n\n'
+#         else:
+#             input_infos_text += f'### {field_name} by {author}:\n{content}\n\n'
 
-        if author == self.__repr__():
-            author += ' (yourself)'
-        if field_name == 'task':
-            input_infos_text += f'# Your Task:\n{content}\n\n'
-        elif iteration_idx != -1:
-            input_infos_text += f'### {field_name} #{iteration_idx + 1} by {author}:\n{content}\n\n'
-        else:
-            input_infos_text += f'### {field_name} by {author}:\n{content}\n\n'
-
-    prompt = input_infos_text + "# Instruction: \n" + instruction + "\n\n" + (CODE_INST if code_output else '')
-    return system_prompt, prompt
+#     prompt = input_infos_text + "# Instruction: \n" + instruction + "\n\n" + (CODE_INST if code_output else '')
+#     return system_prompt, prompt
 
 def query(self, input_infos: list, instruction, iteration_idx=-1) -> dict:
     system_prompt, prompt = self.generate_prompt(input_infos, instruction)
@@ -591,17 +610,24 @@ class AgentSystem():
 
 
 def gen_agents(args):
-    file_path = os.path.join(args.save_dir, f"{args.expr_name}_run_archive.json")
-    if os.path.exists(file_path):
-        with open(file_path, 'r') as json_file:
-            archive = json.load(json_file)
-        if "generation" in archive[-1] and isinstance(archive[-1]['generation'], int):
-            start = archive[-1]['generation']
+    #flow of this part needs to be fixed: also gotta add structured json function calls 
+    
+    agents_paths = glob.glob(os.path.join(args.agents_dir, '*_agent.py')) #got to fix this flow of getting archive, it is not a json but a python file atm
+    for file_path in agents_paths:
+        if os.path.exists(file_path):
+            try:
+                agent_code = file_to_string(file_path)
+                agent_name = os.path.splitext(os.path.basename(file_path))[0]
+                if "generation" in archive[-1] and isinstance(archive[-1]['generation'], int):
+                    start = archive[-1]['generation']
+                else:
+                    start = 0
+            except Exception as e:
+                print(f"Error loading agent from file {file_path}: {e}")
+                continue
         else:
+            archive = get_init_archive()
             start = 0
-    else:
-        archive = get_init_archive()
-        start = 0
 
     for solution in archive:
         if 'fitness' in solution:
@@ -610,21 +636,21 @@ def gen_agents(args):
         solution['generation'] = "initial"
         print(f"============Initial Archive: {solution['name']}=================")
         try:
-            acc_list = evaluate_forward_fn(args, solution["code"])
+            acc_list = evaluate_forward_fn(args, solution["code"]) # we run/execute the actual code in the forward function (in the environment)
         except Exception as e:
             print("During evaluating initial archive:")
             print(e)
             continue
 
-        fitness_str = bootstrap_confidence_interval(acc_list)
+        fitness_str = bootstrap_confidence_interval(acc_list) #not sure if bootstrap from the accuracy list is the best way to get the fitness, instead fitness is decided in the environment 
         solution['fitness'] = fitness_str
 
-        # save results
+        # save results as json? 
         os.makedirs(os.path.dirname(file_path), exist_ok=True)
         with open(file_path, 'w') as json_file:
             json.dump(archive, json_file, indent=4)
 
-    for n in range(start, args.n_generation):
+    for n in range(start, args.n_generation): #times we need to generate new agents before we stop 
         print(f"============Generation {n + 1}=================")
         system_prompt, prompt = get_prompt(archive)
         msg_list = [
@@ -634,7 +660,7 @@ def gen_agents(args):
         try:
             next_solution = get_json_response_from_gpt_reflect(msg_list, args.model)
 
-            Reflexion_prompt_1, Reflexion_prompt_2 = get_iteration_prompt(archive[-1] if n > 0 else None)
+            Reflexion_prompt_1, Reflexion_prompt_2 = get_iteration_prompt(archive[-1] if n > 0 else None) #will probs keep this the same but would have to change the llm call to be structured json response
             # Reflexion 1
             msg_list.append({"role": "assistant", "content": str(next_solution)})
             msg_list.append({"role": "user", "content": Reflexion_prompt_1})
@@ -648,7 +674,7 @@ def gen_agents(args):
             print(e)
             continue
 
-        acc_list = []
+        acc_list = [] #here we check behaviour in evaluation fucntion 
         for _ in range(args.debug_max):
             try:
                 acc_list = evaluate_forward_fn(args, next_solution["code"])
@@ -722,7 +748,7 @@ def eval_agents(args):
         current_idx += 1
 
 
-def evaluate_forward_fn(args, forward_str):
+def evaluate_forward_fn(args, forward_str): #try to run the executation loop here 
     # dynamically define forward()
     # modified from https://github.com/luchris429/DiscoPOP/blob/main/scripts/launch_evo.py
     namespace = {}
