@@ -1,3 +1,5 @@
+#this should be adapted to use litellm instead
+
 import json
 import os
 import re

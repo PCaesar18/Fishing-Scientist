@@ -12,6 +12,7 @@ import argparse
 import copy
 import json
 import os
+import os.path as osp
 import pickle
 from collections import namedtuple
 from concurrent.futures import ThreadPoolExecutor
@@ -21,9 +22,9 @@ import backoff
 import numpy as np
 import openai
 from tqdm import tqdm
-from templates.ai_economist.environment.agents.base_agent import BaseAgent
+#from templates.ai_economist.environment.agents.base_agent import BaseAgent
 
-from utils import random_id,list_to_string, get_prompt, get_init_archive, file_to_string
+from utils import random_id,list_to_string, file_to_string
 
 
 
@@ -55,180 +56,7 @@ Your aim is to design an optimal agent performing well in the economic environme
 
 # The environment code:
 
-```python
-from collections import namedtuple
-from typing import Union
-import numpy as np
-import json
 
-import openai
-import backoff
-from utils import random_id
-
-# Initialize the OpenAI client
-client = openai.OpenAI()
-
-# Named tuple for holding task information
-Info = namedtuple('Info', ['name', 'author', 'content', 'iteration_idx'])
-
-# Format instructions for LLM response
-FORMAT_INST = lambda request_keys: f"Reply EXACTLY with the following JSON format.\n{str(request_keys)}\nDO NOT MISS ANY FIELDS AND MAKE SURE THE JSON FORMAT IS CORRECT!\n"
-
-# Description of the role for the LLM
-ROLE_DESC = lambda role: f"You are a {role}."
-
-@backoff.on_exception(backoff.expo, openai.RateLimitError)
-def get_json_response_from_gpt(msg, model, system_message, temperature=0.5):
-    \"""
-    Function to get JSON response from GPT model.
-    
-    Args:
-    - msg (str): The user message.
-    - model (str): The model to use.
-    - system_message (str): The system message.
-    - temperature (float): Sampling temperature.
-    
-    Returns:
-    - dict: The JSON response.
-    \"""
-    response = client.chat.completions.create(
-        model=model,
-        messages=[
-            {"role": "system", "content": system_message},
-            {"role": "user", "content": msg},
-        ],
-        temperature=temperature,
-        max_tokens=1024,
-        stop=None,
-        response_format={"type": "json_object"}
-    )
-    content = response.choices[0].message.content
-    json_dict = json.loads(content)
-    return json_dict
-
-class LLMAgentBase:
-    \"""
-    Base class for an LLM agent.
-    
-    Attributes:
-    - output_fields (list): Fields expected in the output.
-    - agent_name (str): Name of the agent.
-    - role (str): Role description for the agent.
-    - model (str): Model to be used. (option. Keep it default.)
-    - temperature (float): Sampling temperature.
-    - id (str): Unique identifier for the agent instance.
-    \"""
-
-    def __init__(self, output_fields: list, agent_name: str, role='helpful assistant', model='gpt-3.5-turbo-0125', temperature=0.5) -> None:
-        self.output_fields = output_fields
-        self.agent_name = agent_name
-        self.role = role
-        self.model = model
-        self.temperature = temperature
-        self.id = random_id()
-    
-    def generate_prompt(self, input_infos, instruction) -> str:
-        \"""
-        Generates a prompt for the LLM.
-        
-        Args:
-        - input_infos (list): List of input information.
-        - instruction (str): Instruction for the task.
-        
-        Returns:
-        - tuple: System prompt and user prompt.
-
-        An example of a generated prompt:
-        ""
-        You are a helpful assistant.
-        
-        # Output Format:
-        Reply EXACTLY with the following JSON format.
-        ...
-
-        # Your Task:
-        You will be given some number of paired example inputs and outputs. The outputs ...
-
-        ### thinking #1 by Chain-of-Thought Agent hkFo (yourself):
-        ...
-        
-        ### code #1 by Chain-of-Thought Agent hkFo (yourself):
-        ...
-
-        ### answer by Chain-of-Thought Agent hkFo's code evaluator:...
-
-
-        # Instruction: 
-        Please think step by step and then solve the task by writing the code.
-        ""
-        \"""
-        output_fields_and_description = {key: f"Your {key}." if not 'answer' in key else f"Your {key}. Return ONLY the alphabet choice, i.e. A or B or C or D." for key in self.output_fields}
-        system_prompt = ROLE_DESC(self.role) + "\n\n" + FORMAT_INST(output_fields_and_description)
-
-        input_infos_text = ''
-        for input_info in input_infos:
-            if isinstance(input_info, Info):
-                (field_name, author, content, iteration_idx) = input_info
-            else:
-                continue
-            if author == self.__repr__():
-                author += ' (yourself)'
-            if field_name == 'task':
-                input_infos_text += f'# Your Task:\n{content}\n\n'
-            elif iteration_idx != -1:
-                input_infos_text += f'### {field_name} #{iteration_idx+1} by {author}:\n{content}\n\n'
-            else:
-                input_infos_text += f'### {field_name} by {author}:\n{content}\n\n'
-
-        prompt = input_infos_text + instruction
-        return system_prompt, prompt 
-
-    def query(self, input_infos: list, instruction, iteration_idx=-1) -> list[Info]:
-        \"""
-        Queries the LLM with provided input information and instruction.
-        
-        Args:
-        - input_infos (list): List of input information.
-        - instruction (str): Instruction for the task.
-        - iteration_idx (int): Iteration index for the task.
-        
-        Returns:
-        - output_infos (list[Info]): Output information.
-        \"""
-        system_prompt, prompt = self.generate_prompt(input_infos, instruction)
-        response_json = get_json_response_from_gpt(prompt, self.model, system_prompt, self.temperature)
-
-        output_infos = []
-        for key, value in response_json.items():
-            info = Info(key, self.__repr__(), value, iteration_idx)
-            output_infos.append(info)
-        return output_infos
-
-    def __repr__(self):
-        return f"{self.agent_name} {self.id}"
-    
-    def __call__(self, input_infos: list, instruction, iteration_idx=-1):
-        # Note:
-        # The output of the LLM is a list of Info. If you are only querying one output, you should access it with [0].
-        # It is a good practice to always include 'thinking' in the output.
-        return self.query(input_infos, instruction, iteration_idx=iteration_idx)
-
-class AgentArchitecture:
-    \"""
-    Fill in your code here.
-    \"""
-    def forward(self, taskInfo) -> Union[Info, str]:
-        \"""
-        Placeholder method for processing task information.
-        
-        Args:
-        - taskInfo (Info): Task information.
-        
-        Returns:
-        - Answer (Union[Info, str]): Your FINAL Answer. Return either a namedtuple Info or a string of answers.
-        \"""
-        pass
-```
 # Previousyly discovered agent architecture archive
 Here is the archive of the discovered agent architectures that worked well in the environment. You can use these as inspiration for your new agent design or use them in your new design:
 
@@ -310,6 +138,15 @@ Use the knowledge from the archive and inspiration from the hyperparameters and 
 THINK OUTSIDE THE BOX.
 """
 
+EXAMPLE = {
+    "thought": "**Insights:**\nYour insights on what should be the next interesting agent.\n**Overall Idea:**\nyour reasoning and the overall concept behind the agent design.\n**Implementation:**\ndescribe the implementation step by step.",
+    "name": "Name of your proposed agent",
+    "code": """def forward(self, taskInfo):
+    # Your code here
+    return answer
+"""
+}
+
 
 iteration_prompt_1 = f""""[EXAMPLE]Carefully review the proposed new agent architecture and reflect on the following points:"
 
@@ -339,6 +176,11 @@ Your response should be organized as follows:
 "code": Provide the corrected code or an improved implementation. Make sure you actually implement your fix and improvement in this code.
 """
 
+iteration_prompt_2 = """Using the tips in "## WRONG Implementation examples" section, revise the code further.
+Your response should be organized as follows:
+Put your new reflection thinking in "reflection". Repeat the previous "thought" and "name", and update the corrected version of the code in "code".
+"""
+
 system_prompt = """You are a helpful assistant. Make sure to return in a WELL-FORMED JSON object."""
 
 
@@ -355,7 +197,7 @@ system_prompt = """You are a helpful assistant. Make sure to return in a WELL-FO
 #             {"role": "system", "content": system_message},
 #             {"role": "user", "content": msg},
 #         ],
-#         temperature=temperature, max_tokens=1024, stop=None, response_format={"type": "json_object"}
+        # temperature=temperature, max_tokens=1024, stop=None, response_format={"type": "json_object"} TODO: have litellm do json responses 
 #     )
 #     content = response.choices[0].message.content
 #     json_dict = json.loads(content)
@@ -384,7 +226,7 @@ system_prompt = """You are a helpful assistant. Make sure to return in a WELL-FO
 #fix this to create full prompts for input fields
 
 
-def get_prompt(idea, current_archive, base_agent, parameters):
+def format_prompt(idea, current_archive, base_agent, parameters):
     """
     Constructs and returns a system prompt and a user prompt for generating new agent architectures.
 
@@ -456,50 +298,50 @@ def get_iteration_prompt(prev_example):
     """
     prev_example_str = "Here is the previous agent you tried:\n" + json.dumps(prev_example) + "\n\n"
     r1 = iteration_prompt_1.replace("[EXAMPLE]", prev_example_str) if prev_example else iteration_prompt_1.replace("[EXAMPLE]", "")
-    return r1, Reflexion_prompt_2 #TODO: iteration prompt 2 does not exist yet (is it necessary?)
+    return r1, iteration_prompt_2
 
-#don't think i need this one but will keep it in for
-# def generate_prompt(self, input_infos, instruction) -> str:
-#     code_output = False
+#need this to create structured json schema/objects for calls 
+def generate_json_prompt(self, input_infos, instruction) -> str:
+    code_output = False
 
-#     # construct system prompt
-#     output_fields_and_description = {key: f"Your {key}." for key in self.output_fields}
-#     for key in output_fields_and_description:
-#         if 'answer' in key:
-#             output_fields_and_description[key] = f"Your {key}. ONLY return a string of list[list[int]]. DO NOT return anything else."
-#         elif 'code' in key:
-#             output_fields_and_description[key] = f"Your {key}. Don't write tests in your Python code, ONLY return the `transform` function. DO NOT return anything else. (It will be tested later.)"
-#             code_output = True
-#     system_prompt = ROLE_DESC(self.role) + FORMAT_INST(output_fields_and_description)
+    # construct system prompt
+    output_fields_and_description = {key: f"Your {key}." for key in self.output_fields}
+    for key in output_fields_and_description:
+        if 'answer' in key:
+            output_fields_and_description[key] = f"Your {key}. ONLY return a string of list[list[int]]. DO NOT return anything else."
+        elif 'code' in key:
+            output_fields_and_description[key] = f"Your {key}. Don't write tests in your Python code, ONLY return the `transform` function. DO NOT return anything else. (It will be tested later.)"
+            code_output = True
+    system_prompt = ROLE_DESC(self.role) + FORMAT_INST(output_fields_and_description)
 
-#     # construct input infos text
-#     input_infos_text = ''
-#     for input_info in input_infos:
-#         if isinstance(input_info, Info):
-#             (field_name, author, content, iteration_idx) = input_info
-#         else:
-#             continue
+    # construct input infos text
+    input_infos_text = ''
+    for input_info in input_infos:
+        if isinstance(input_info, Info):
+            (field_name, author, content, iteration_idx) = input_info
+        else:
+            continue
 
-#         if isinstance(content, list):
-#             try:
-#                 content = list_to_string(content)
-#             except:
-#                 pass
+        if isinstance(content, list):
+            try:
+                content = list_to_string(content)
+            except:
+                pass
 
-#         if author == self.__repr__():
-#             author += ' (yourself)'
-#         if field_name == 'task':
-#             input_infos_text += f'# Your Task:\n{content}\n\n'
-#         elif iteration_idx != -1:
-#             input_infos_text += f'### {field_name} #{iteration_idx + 1} by {author}:\n{content}\n\n'
-#         else:
-#             input_infos_text += f'### {field_name} by {author}:\n{content}\n\n'
+        if author == self.__repr__():
+            author += ' (yourself)'
+        if field_name == 'task':
+            input_infos_text += f'# Your Task:\n{content}\n\n'
+        elif iteration_idx != -1:
+            input_infos_text += f'### {field_name} #{iteration_idx + 1} by {author}:\n{content}\n\n'
+        else:
+            input_infos_text += f'### {field_name} by {author}:\n{content}\n\n'
 
-#     prompt = input_infos_text + "# Instruction: \n" + instruction + "\n\n" + (CODE_INST if code_output else '')
-#     return system_prompt, prompt
+    prompt = input_infos_text + "# Instruction: \n" + instruction + "\n\n" + (CODE_INST if code_output else '')
+    return system_prompt, prompt
 
 def query(self, input_infos: list, instruction, iteration_idx=-1) -> dict:
-    system_prompt, prompt = self.generate_prompt(input_infos, instruction)
+    system_prompt, prompt = generate_json_prompt(input_infos, instruction)
     try:
         response_json = {}
         response_json = get_json_response_from_gpt(prompt, self.model, system_prompt, self.temperature) #here we get the response from our LLM 
@@ -521,98 +363,26 @@ def query(self, input_infos: list, instruction, iteration_idx=-1) -> dict:
         output_infos.append(info)
     return output_infos
 
-def __repr__(self):
-    return f"{self.agent_name} {self.id}"
+#don't think i need these 
+# def __repr__(self):
+#     return f"{self.agent_name} {self.id}"
 
-def __call__(self, input_infos: list, instruction, iteration_idx=-1):
-    return self.query(input_infos, instruction, iteration_idx=iteration_idx)
+# def __call__(self, input_infos: list, instruction, iteration_idx=-1):
+#     return self.query(input_infos, instruction, iteration_idx=iteration_idx)
 
 
-class AgentSystem():
-    def __init__(self, examples, test_iuput) -> None:
-        self.examples = examples
-        self.test_iuput = test_iuput
-
-    def run_examples_and_get_feedback(self, code):
-        examples = self.examples
-
-        correct_examples = []
-        wrong_examples = []
-
-        if isinstance(code, Info):
-            author = code.author
-            code = code.content
-        else:
-            author = None
-
-        gen_output = lambda msg: Info('feedback', f"{author}'s code evaluator" if author else "code evaluator", msg, -1)
-
-        local_vars = {}
-        try:
-            exec(code, {}, local_vars)
-        except Exception as e:
-            return gen_output(f"Error during code execution: {e}"), correct_examples, wrong_examples
-        if 'transform' not in local_vars:
-            return gen_output("Function 'transform' not found in the code."), correct_examples, wrong_examples
-
-        transform = local_vars['transform']
-
-        feedback = ""
-
-        for idx, example in enumerate(examples):
-            input_grid = example['input']
-            output_grid = example['output']
-            try:
-                transformed_grid = transform(input_grid)
-            except Exception as e:
-                return gen_output(f"Error during function execution: {e}"), correct_examples, wrong_examples
-
-            if transformed_grid == output_grid:
-                feedback += f"Your transform function generates a CORRECT answer in Example {idx}!\n\n"
-                correct_examples.append(example)
-            else:
-                try:
-                    transformed_grid = list_to_string(transformed_grid)
-                except:
-                    pass
-                feedback += f"Your transform function generates a WRONG answer in Example {idx}!\nExpect: See above Example {idx} output.\nYou got: {transformed_grid}\nObserve the Example {idx} carefully!\n\n"
-                wrong_examples.append(example)
-
-        return gen_output(feedback), correct_examples, wrong_examples
-
-    def get_test_output_from_code(self, code):
-        test_input = self.test_iuput
-
-        if isinstance(code, Info):
-            author = code.author
-            code = code.content
-        else:
-            author = None
-
-        gen_output = lambda msg: Info('answer', f"{author}'s code evaluator" if author else "code evaluator", msg, -1)
-
-        local_vars = {}
-        try:
-            exec(code, {}, local_vars)
-        except Exception as e:
-            return gen_output(f"Error during code execution: {e}")
-        if 'transform' not in local_vars:
-            return gen_output("Function 'transform' not found in the code.")
-
-        transform = local_vars['transform']
-        try:
-            transform_output = transform(test_input)
-            transform_output = list_to_string(transform_output)
-        except Exception as e:
-            return gen_output(f"Error during function execution: {e}")
-
-        return gen_output(transform_output)
 
 
 def gen_agents(args):
-    #flow of this part needs to be fixed: also gotta add structured json function calls 
+    # flow of this part needs to be fixed: also gotta add structured json function calls 
     
-    agents_paths = glob.glob(os.path.join(args.agents_dir, '*_agent.py')) #got to fix this flow of getting archive, it is not a json but a python file atm
+    with open(osp.join(args.experiment_dir, "ideas.json"), "r") as f:
+        ideas = json.load(f)
+        # agents = ideas["agents"]
+    with open(osp.join(args.experiment_dir, "parameters.json"), "r") as f:
+        agent_parameters = json.load(f)
+    
+    agents_paths = glob.glob(os.path.join(args.agents_dir, '*_agent.py')) # got to fix this flow of getting archive, it is not a json but a python file atm
     for file_path in agents_paths:
         if os.path.exists(file_path):
             try:
@@ -652,7 +422,7 @@ def gen_agents(args):
 
     for n in range(start, args.n_generation): #times we need to generate new agents before we stop 
         print(f"============Generation {n + 1}=================")
-        system_prompt, prompt = get_prompt(archive)
+        system_prompt, prompt = format_prompt(ideas, archive, agent_code, agent_parameters) #check if this works, maybe put this before the loop because 
         msg_list = [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": prompt},
@@ -799,11 +569,92 @@ def evaluate_forward_fn(args, forward_str): #try to run the executation loop her
     print("acc:", bootstrap_confidence_interval(acc_list))
     return acc_list
 
+#do i need this one? maybe
+class AgentSystem():
+    def __init__(self, examples, test_iuput) -> None:
+        self.examples = examples
+        self.test_iuput = test_iuput
+
+    def run_examples_and_get_feedback(self, code):
+        examples = self.examples
+
+        correct_examples = []
+        wrong_examples = []
+
+        if isinstance(code, Info):
+            author = code.author
+            code = code.content
+        else:
+            author = None
+
+        gen_output = lambda msg: Info('feedback', f"{author}'s code evaluator" if author else "code evaluator", msg, -1)
+
+        local_vars = {}
+        try:
+            exec(code, {}, local_vars)
+        except Exception as e:
+            return gen_output(f"Error during code execution: {e}"), correct_examples, wrong_examples
+        if 'transform' not in local_vars:
+            return gen_output("Function 'transform' not found in the code."), correct_examples, wrong_examples
+
+        transform = local_vars['transform']
+
+        feedback = ""
+
+        for idx, example in enumerate(examples):
+            input_grid = example['input']
+            output_grid = example['output']
+            try:
+                transformed_grid = transform(input_grid)
+            except Exception as e:
+                return gen_output(f"Error during function execution: {e}"), correct_examples, wrong_examples
+
+            if transformed_grid == output_grid:
+                feedback += f"Your transform function generates a CORRECT answer in Example {idx}!\n\n"
+                correct_examples.append(example)
+            else:
+                try:
+                    transformed_grid = list_to_string(transformed_grid)
+                except:
+                    pass
+                feedback += f"Your transform function generates a WRONG answer in Example {idx}!\nExpect: See above Example {idx} output.\nYou got: {transformed_grid}\nObserve the Example {idx} carefully!\n\n"
+                wrong_examples.append(example)
+
+        return gen_output(feedback), correct_examples, wrong_examples
+
+    def get_test_output_from_code(self, code):
+        test_input = self.test_iuput
+
+        if isinstance(code, Info):
+            author = code.author
+            code = code.content
+        else:
+            author = None
+
+        gen_output = lambda msg: Info('answer', f"{author}'s code evaluator" if author else "code evaluator", msg, -1)
+
+        local_vars = {}
+        try:
+            exec(code, {}, local_vars)
+        except Exception as e:
+            return gen_output(f"Error during code execution: {e}")
+        if 'transform' not in local_vars:
+            return gen_output("Function 'transform' not found in the code.")
+
+        transform = local_vars['transform']
+        try:
+            transform_output = transform(test_input)
+            transform_output = list_to_string(transform_output)
+        except Exception as e:
+            return gen_output(f"Error during function execution: {e}")
+
+        return gen_output(transform_output)
+
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--val_data_path', type=str, default='sampled_arc_val_data.pkl')
-    parser.add_argument('--test_data_path', type=str, default='sampled_arc_test_data.pkl')
+    parser = argparse.ArgumentParser(description="Generate AI Economist agents")
+    # parser.add_argument('--val_data_path', type=str, default='sampled_arc_val_data.pkl')
+    # parser.add_argument('--test_data_path', type=str, default='sampled_arc_test_data.pkl')
     parser.add_argument('--n_repreat', type=int, default=5)
     parser.add_argument('--multiprocessing', action='store_true', default=True)
     parser.add_argument('--max_workers', type=int, default=32)
@@ -826,3 +677,15 @@ if __name__ == "__main__":
     # evaluate
     SEARCHING_MODE = False
     eval_agents(args)
+
+    
+# outpt = format_prompt("RL agent", "archive", "base_agent", "parameters") #this works,
+# print(outpt)
+    # current_path = '/Users/vercingetorix/Gone_fishing/Sakana5/'
+    # base_dir = osp.join(current_path, "templates/ai_economist")
+    # results_dir = osp.join("results", "abm")
+    # print(base_dir)
+
+ 
+ 
+ 
