@@ -6,6 +6,9 @@
   <b>Open-Ended Economic Discovery</b><br>
 </h1>
 
+## Note:
+This was original forked from the [AI scientist](https://github.com/SakanaAI/AI-Scientist) but has since been modified to be a standalone project after some significant changes were made. 
+
 ## General Idea
 The idea involves mixing, combining and matching several open-source projects together. Combining the idea behind the AI Scientist and the AI Economist, the goal is to autonomously search a multi-agent environment (Agent Based model) with the aim of discovering emergent properties. 
 
