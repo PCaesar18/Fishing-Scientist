@@ -51,6 +51,7 @@ The final framework hopefully brings more relevant real-world data to the origin
 ## Main Sources ----------------------------------------------------------------
 
 Applicable sources with the ideas that are combined in the full merge:
+
 AI scientist: https://github.com/SakanaAI/AI-Scientist
 ```
 @article{lu2024aiscientist,
@@ -99,4 +100,21 @@ ASAL: https://pub.sakana.ai/asal/
 }
 ```
 LLM hyperparameter search : https://arxiv.org/abs/2312.04528
+```
+@article{zhang2023using,
+  title={Using large language models for hyperparameter optimization},
+  author={Zhang, Michael R and Desai, Nishkrit and Bae, Juhan and Lorraine, Jonathan and Ba, Jimmy},
+  journal={arXiv preprint arXiv:2312.04528},
+  year={2023}
+}
+```
+Smolagents
 open source deep research: https://huggingface.co/blog/open-deep-research
+```
+@article{huggingface2024smolagents,
+  title={Smolagents: Open Source Deep Research},
+  author={Huggingface},
+  journal={https://huggingface.co/blog/open-deep-research},
+  year={2024}
+}
+```
