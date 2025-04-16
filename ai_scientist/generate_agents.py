@@ -223,6 +223,8 @@ system_prompt = """You are a helpful assistant. Make sure to return in a WELL-FO
 #     return json_dict
 
 
+
+
 #fix this to create full prompts for input fields
 
 
@@ -301,18 +303,121 @@ def get_iteration_prompt(prev_example):
     return r1, iteration_prompt_2
 
 #need this to create structured json schema/objects for calls 
-def generate_json_prompt(self, input_infos, instruction) -> str:
-    code_output = False
 
-    # construct system prompt
+# def generate_json_prompt(self, input_infos, instruction) -> str:
+#     """
+#     Generates a JSON prompt for the LLM based on the provided input information and instruction.
+
+#     This function constructs a system prompt and an input information text block, which are combined
+#     to form a complete prompt for the language model. The system prompt is built using the role of the
+#     agent and the expected output fields, while the input information text is constructed from the 
+#     provided input_infos list. The function also determines if the output should include code and 
+#     adjusts the prompt accordingly.
+
+#     Args:
+#         self: The instance of the class containing this method, which provides access to the role and 
+#               output fields.
+#         input_infos (list): A list of Info objects containing field names, authors, content, and 
+#                             iteration indices.
+#         instruction (str): The instruction to be included in the prompt.
+
+#     Returns:
+#         str: A tuple containing the system prompt and the complete prompt text.
+#     """
+#     code_output = False
+
+#     # construct system prompt and how output should look like
+#     output_fields_and_description = {key: f"Your {key}." for key in self.output_fields}
+#     for key in output_fields_and_description:
+#         if 'answer' in key:
+#             output_fields_and_description[key] = f"Your {key}. ONLY return a string of list[list[int]]. DO NOT return anything else."
+#         elif 'code' in key:
+#             output_fields_and_description[key] = f"Your {key}. Don't write tests in your Python code, ONLY return the completed Agent class. DO NOT return anything else. (It will be tested later.)"
+#             code_output = True
+            
+#     FORMAT_INST = lambda request_keys: f"""# Output Format:\nReply EXACTLY with the following JSON format.\n{str(request_keys)}\nDO NOT MISS ANY REQUEST FIELDS and ensure that your response is a WELL-FORMED JSON object!\n"""
+#     system_prompt = ROLE_DESC(self.role) + FORMAT_INST(output_fields_and_description)
+
+#     # construct input infos text
+#     input_infos_text = ''
+#     for input_info in input_infos:
+#         if isinstance(input_info, Info):
+#             (field_name, author, content, iteration_idx) = input_info
+#         else:
+#             continue
+
+#         if isinstance(content, list):
+#             try:
+#                 content = list_to_string(content)
+#             except:
+#                 pass
+
+#         if author == self.__repr__():
+#             author += ' (yourself)'
+#         if field_name == 'task':
+#             input_infos_text += f'# Your Task:\n{content}\n\n'
+#         elif iteration_idx != -1:
+#             input_infos_text += f'### {field_name} #{iteration_idx + 1} by {author}:\n{content}\n\n'
+#         else:
+#             input_infos_text += f'### {field_name} by {author}:\n{content}\n\n'
+
+#     prompt = input_infos_text + "# Instruction: \n" + instruction + "\n\n" + (CODE_INST if code_output else '')
+#     return system_prompt, prompt
+
+def generate_json_prompt_old(self, input_infos, instruction) -> str:
+    """
+    Generates a JSON prompt for the LLM based on the provided input information and instruction.
+
+    This function constructs a system prompt and an input information text block, which are combined
+    to form a complete prompt for the language model. The system prompt is built using the role of the
+    agent and the expected output fields, while the input information text is constructed from the 
+    provided input_infos list. The function also determines if the output should include code and 
+    adjusts the prompt accordingly.
+
+    Args:
+        self: The instance of the class containing this method, which provides access to the role and 
+              output fields.
+        input_infos (list): A list of Info objects containing field names, authors, content, and 
+                            iteration indices.
+        instruction (str): The instruction to be included in the prompt.
+
+    Returns:
+        str: A tuple containing the system prompt and the complete prompt text.
+    """
+    code_output = False
+    
+    json_schema = {
+        "type": "object",
+        "properties": {
+            "class_name": {
+                "type": "string",
+                "description": "Name of your agent class inheriting BaseAgent"
+            },
+            "agent_name": {
+                "type": "string",
+                "description": "Short name for the agent, e.g. 'government'"
+            },
+            "code": {
+                "type": "string",
+                "description": "All of the Python code that implements your new agent"
+            }
+        },
+        "required": ["class_name", "agent_name", "code"],
+        "additionalProperties": False
+    }
+
+
+    # construct system prompt and how output should look like
     output_fields_and_description = {key: f"Your {key}." for key in self.output_fields}
     for key in output_fields_and_description:
         if 'answer' in key:
             output_fields_and_description[key] = f"Your {key}. ONLY return a string of list[list[int]]. DO NOT return anything else."
-        elif 'code' in key:
-            output_fields_and_description[key] = f"Your {key}. Don't write tests in your Python code, ONLY return the `transform` function. DO NOT return anything else. (It will be tested later.)"
+        elif 'code' in key: 
+            output_fields_and_description[key] = f"Your {key}. Don't write tests in your Python code, ONLY return the completed Agent class. DO NOT return anything else. (It will be tested later.)"
             code_output = True
-    system_prompt = ROLE_DESC(self.role) + FORMAT_INST(output_fields_and_description)
+            
+    FORMAT_INST = lambda schema: f"""You are an AI that strictly returns JSON according to the following schema. \n{str(schema)}\nDO NOT MISS ANY FIELDS and ensure that your response is a WELL-FORMED AND VALID JSON !\n"""
+    system_prompt = ROLE_DESC(self.role) + FORMAT_INST(json_schema)
 
     # construct input infos text
     input_infos_text = ''
@@ -685,6 +790,13 @@ if __name__ == "__main__":
     # base_dir = osp.join(current_path, "templates/ai_economist")
     # results_dir = osp.join("results", "abm")
     # print(base_dir)
+    
+    #TODO: 
+    # - Fix json schema,
+    # - Fix the agent system class to be more general and not depend on the specific agent
+    # - Fix callback to the experiment/system to work
+    # - Dig into MCP
+    # - Dig into updated AI scientist-V2 framework
 
  
  
